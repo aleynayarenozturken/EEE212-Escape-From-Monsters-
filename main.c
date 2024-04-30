@@ -12,6 +12,7 @@
 
 int main (void){
 	go();
+	init_UltraSensor();
 	__enable_irq();
 	
 	while(1){
