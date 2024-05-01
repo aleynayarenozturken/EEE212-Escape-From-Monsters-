@@ -3,7 +3,7 @@
 /* PTE22 -> Ultrason trig */
 
 volatile char pattern = 0;
-int ultracount = 0, buffer;
+volatile int ultracount = 0, flag = 1;
 
 void Delay(unsigned long long);
 void go(void);
@@ -13,9 +13,10 @@ void SysTick_Handler(void);
 
 void go(){    /*configure input-output and timers*/
     
+	
     SIM->SCGC5 |= 0x0200; /*enable clock to PortA*/
-    PTA->PDDR &= ~1UL; /*make PTA1 input*/
-    PORTA->PCR[1] |= PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_IRQC(0x09); /*make PTA1 GPIO, enable pull-down resistor, interrupt on rising edge*/
+	  PORTA->PCR[2] |= PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_IRQC(0x09); /*make PTA1 GPIO, enable pull-down resistor, interrupt on rising edge*/
+    PTA->PDDR &= ~4UL; /*make PTA1 input*/
     NVIC_SetPriority(PORTA_IRQn, 128); /*set interrupt priority*/
     NVIC_ClearPendingIRQ(PORTA_IRQn); /*clear pending interrupts*/    
     NVIC_EnableIRQ(PORTA_IRQn); /*enable IRQ for portA*/
@@ -34,26 +35,34 @@ void go(){    /*configure input-output and timers*/
 }
 
 void init_UltraSensor(){
-		SIM->SCGC6 |= SIM_SCGC6_TPM2_MASK; /*start TPM1*/
+		SIM->SCGC6 |= SIM_SCGC6_TPM2_MASK; /*start TPM2*/
 		SIM->SCGC5 |= 0x2000;
-    PORTE->PCR[22] |= PORT_PCR_MUX(3); /*make PTA13 as TPM1_CH1*/
+    PORTE->PCR[22] |= PORT_PCR_MUX(3); /*make PTE22 as TPM1_CH1*/
     TPM2->SC |= TPM_SC_CMOD(1) | 4; /*set the prescaler to 64  3.05 uS*/
-    TPM2->CONTROLS[0].CnSC |= 0x0028; /*set CH1 of TPM1 as output*/
+    TPM2->CONTROLS[0].CnSC |= 0x0028; /*set CH0 of TPM2 as output*/
     TPM2->CONTROLS[0].CnV = 13; /*set the initial compare value for continuous rotation*/
     TPM2->MOD = 49971; /*set the modulo for TPM1*/
 }
 
 void PORTA_IRQHandler(){
 	 ultracount = 0;
-   while(PTA->PDIR & 0x1){
+   while(PTA->PDIR & 0x4){
 			ultracount++;
 	 }
-	 if(ultracount <= 0x50){
-		 TPM1->CONTROLS[1].CnV = 281;
-		 Delay(50);
-		 TPM1->CONTROLS[1].CnV = 246;
-	 }
-	 buffer = ultracount;
+	 if(ultracount <= 0x510){				 
+			 if(pattern < 2)
+				 TPM1->CONTROLS[1].CnV = 281;
+			 else
+				 TPM1->CONTROLS[1].CnV = 211;
+			 Delay(5000000);
+			 if(pattern < 3)
+					pattern++;
+				else
+					pattern = 0;
+	 } else
+		  TPM1->CONTROLS[1].CnV = 246;
+	 
+	 
     NVIC_ClearPendingIRQ(PORTA_IRQn); /*clear pending interrupts for port A*/
     PORTA->ISFR = ~0UL; /*set 1 of all bits of ISFR*/
 }
