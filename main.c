@@ -13,9 +13,21 @@
 int main (void){
 	go();
 	init_UltraSensor();
+	LCD_init();
 	__enable_irq();
 	
 	while(1){
-		__WFI();
+		if(mode){
+			switch(PTB->PDIR & 0x300){
+				case 0x100:
+					TPM1->CONTROLS[1].CnV = 281;
+					break;
+				case 0x200:
+					TPM1->CONTROLS[1].CnV = 211;
+					break;
+				default:
+					TPM1->CONTROLS[1].CnV = 246;	
+			}
+		}
 	}
 }
