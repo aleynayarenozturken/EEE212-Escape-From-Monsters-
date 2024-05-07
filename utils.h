@@ -43,6 +43,14 @@ void go(){    /*configure input-output and timers*/
     TPM1->CONTROLS[1].CnSC |= 0x0028; /*set CH1 of TPM1 as output*/
     TPM1->CONTROLS[1].CnV = 246; /*set the initial compare value for continuous rotation*/
     TPM1->MOD = 3279; /*set the modulo for TPM1*/
+		
+		SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK;
+    SIM->SCGC6 |= SIM_SCGC6_TPM0_MASK; /*start TPM1*/
+    PORTC->PCR[8] |= PORT_PCR_MUX(3); /*make PTC8 as TPM0_CH4*/
+    TPM0->SC |= TPM_SC_CMOD(1) | 7; /*set the prescaler to 128*/
+    TPM0->CONTROLS[4].CnSC |= 0x0028; /*set CH1 of TPM1 as output*/
+    TPM0->CONTROLS[4].CnV = 246; /*set the initial compare value for continuous rotation*/
+    TPM0->MOD = 3279; /*set the modulo for TPM1*/
 
     SysTick->CTRL |= 0x0003; /*set clock source, tickint and interrupt enable*/
     SysTick->LOAD = 650000; /*load value for systick*/
@@ -65,11 +73,11 @@ void PORTA_IRQHandler(){
 		switch(mode){
 			case 0:
 				mode = 1;
-				LCD_data('1');
+				LCD_data('2');
 				break;
 			default:
 				mode = 0;
-				LCD_data('0');
+				LCD_data('1');
 		}
 	}
 	if(PORTA->ISFR & (1UL << 12)){
@@ -78,18 +86,22 @@ void PORTA_IRQHandler(){
    while(PTA->PDIR & 0x1000){
 			ultracount++;
 	 }
-	 if(ultracount <= 0x510){		
+	 if(ultracount <= 0x1000){		
 
-			 if(pattern < 2)
+			 if(pattern < 2){
 				 TPM1->CONTROLS[1].CnV = 281;
-			 else
+				 TPM0->CONTROLS[4].CnV = 211;
+			 } else {
 				 TPM1->CONTROLS[1].CnV = 211;
+				 TPM0->CONTROLS[4].CnV = 281;
+			 }
 			 Delay(5000000);
 			 if(pattern < 3)
 					pattern++;
 				else
 					pattern = 0;
 				TPM1->CONTROLS[1].CnV = 246;
+				TPM0->CONTROLS[4].CnV = 246;
 		 }
 	 }
 	 }
@@ -130,7 +142,7 @@ void LCD_init(void)
     LCD_command(0x38);      /* set 8-bit data, 2-line, 5x7 font */
     LCD_command(0x01);      /* clear screen, move cursor to home */
     LCD_command(0x0F);      /* turn on display, cursor blinking */
-	  LCD_data('M');LCD_data('O');LCD_data('D');LCD_data('E');LCD_data(':');LCD_data(' ');LCD_data('0');
+	  LCD_data('M');LCD_data('O');LCD_data('D');LCD_data('E');LCD_data(':');LCD_data(' ');LCD_data('1');
 }
 
 /* This function waits until LCD controller is ready to
